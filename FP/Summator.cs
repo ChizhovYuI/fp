@@ -25,28 +25,34 @@ namespace FP
 		}
 
 
-		public void ProcessOld()
+		public void Process()
 		{
-			using (var input = openDatasource())
-			using (var writer = new StreamWriter(outputFilename))
+            using (var input = openDatasource())
 			{
-				var c = 0;
-				while (true)
-				{
-					string[] record = input.NextRecord();
-					if (record == null) break;
-					c++;
-					var nums = record.Select(part => Convert.ToInt32(part, 16)).ToArray();
-					var sum = nums.Sum();
-					var text = formatter.Format(nums, sum);
-					writer.WriteLine(text);
-					if (c % 100 == 0)
-						Console.WriteLine("processed {0} items", c);
-				}
-			}
+                var c = 0;
+                var allResult = GetAllRecords(input).Select(ConvertToInt).Select(GetResult).AfterEvery(++c, WriteProgress);
+                File.WriteAllLines(outputFilename, allResult);
+            }
 		}
 
-		public void ProcessRefactored()
+	    private static void WriteProgress(int c)
+	    {
+	        if (c % 100 == 0)
+	            Console.WriteLine($"processed {c} items");
+	    }
+
+        private string GetResult(IEnumerable<int> args) => formatter.Format(args, args.Sum());
+
+	    private static IEnumerable<int> ConvertToInt(string[] record) => record.Select(part => Convert.ToInt32(part, 16));
+
+	    private static IEnumerable<string[]> GetAllRecords(DataSource input)
+	    {
+	        string[] record;
+	        while ((record = input.NextRecord()) != null)
+	            yield return record;
+	    }
+
+	    public void ProcessRefactored()
 		{
 			SumRecords(openDatasource(), formatter, outputFilename);
 		}
